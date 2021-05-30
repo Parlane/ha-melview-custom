@@ -1,7 +1,7 @@
 {
     "config": {
         "abort": {
-            "already_configured": "MELCloud integration already configured for this email. Access password has been refreshed."
+            "already_configured": "MELView integration already configured for this email. Access password has been refreshed."
         },
         "error": {
             "cannot_connect": "Failed to connect, please try again",
@@ -11,16 +11,15 @@
         "step": {
             "user": {
                 "data": {
-                    "username": "Email used to login to MELCloud.",
-                    "password": "MELCloud password.",
+                    "username": "Email used to login to MELView.",
+                    "password": "MELView password.",
                     "language": "Language",
                     "disable_sensors": "Disable additional sensors"
                 },
-                "description": "Connect using your MELCloud account.",
-                "title": "Connect to MELCloud"
+                "description": "Connect using your MELView account.",
+                "title": "Connect to MELView"
             }
         },
-        "title": "MELCloud Custom"
+        "title": "MELView Custom"
     }
 }
-

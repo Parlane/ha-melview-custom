@@ -1,4 +1,4 @@
-"""Config flow for the MELCloud platform."""
+"""Config flow for the MELView platform."""
 import asyncio
 import logging
 
@@ -10,7 +10,7 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 
 from .const import DOMAIN, CONF_LANGUAGE, LANGUAGES  # pylint: disable=unused-import
-from . import MELCLOUD_SCHEMA, MelCloudAuthentication
+from . import MELCLOUD_SCHEMA, MelViewAuthentication
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class FlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         return await self._create_entry(user_input)
 
     async def _test_authorization(self, username, password, language):
-        mcauth = MelCloudAuthentication(username, password, LANGUAGES[language])
+        mcauth = MelViewAuthentication(username, password, LANGUAGES[language])
         return await mcauth.login(self.hass.helpers.aiohttp_client.async_get_clientsession())
 
     async def async_step_user(self, user_input=None):

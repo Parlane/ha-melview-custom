@@ -3,15 +3,15 @@ from datetime import timedelta
 import logging
 from typing import Any, Dict, List, Optional
 
-from pymelcloud import DEVICE_TYPE_ATA, DEVICE_TYPE_ATW, AtaDevice, AtwDevice
-import pymelcloud.ata_device as ata
-import pymelcloud.atw_device as atw
-from pymelcloud.atw_device import (
+from pymelview import DEVICE_TYPE_ATA, DEVICE_TYPE_ATW, AtaDevice, AtwDevice
+import pymelview.ata_device as ata
+import pymelview.atw_device as atw
+from pymelview.atw_device import (
     PROPERTY_ZONE_1_OPERATION_MODE,
     PROPERTY_ZONE_2_OPERATION_MODE,
     Zone,
 )
-from pymelcloud.device import PROPERTY_POWER
+from pymelview.device import PROPERTY_POWER
 
 from homeassistant.components.climate.const import (
     DEFAULT_MAX_TEMP,
@@ -31,13 +31,13 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.typing import HomeAssistantType
 
-from . import MelCloudDevice
+from . import MelViewDevice
 from .const import (
     ATTR_STATUS,
     ATTR_VANE_VERTICAL,
     ATTR_VANE_HORIZONTAL,
-    DOMAIN, 
-    MEL_DEVICES, 
+    DOMAIN,
+    MEL_DEVICES,
     HorSwingModes,
     VertSwingModes,
 )
@@ -97,7 +97,7 @@ ATW_ZONE_HVAC_MODE_REVERSE_LOOKUP = {v: k for k, v in ATW_ZONE_HVAC_MODE_LOOKUP.
 async def async_setup_entry(
     hass: HomeAssistantType, entry: ConfigEntry, async_add_entities
 ):
-    """Set up MelCloud device climate based on config_entry."""
+    """Set up MelView device climate based on config_entry."""
     mel_devices = hass.data[DOMAIN][entry.entry_id].get(MEL_DEVICES)
     async_add_entities(
         [
@@ -113,17 +113,17 @@ async def async_setup_entry(
     )
 
 
-class MelCloudClimate(ClimateEntity):
+class MelViewClimate(ClimateEntity):
     """Base climate device."""
 
-    def __init__(self, device: MelCloudDevice):
+    def __init__(self, device: MelViewDevice):
         """Initialize the climate."""
         self.api = device
         self._base_device = self.api.device
         self._name = device.name
 
     async def async_update(self):
-        """Update state from MELCloud."""
+        """Update state from MELView."""
         await self.api.async_update()
 
     @property
@@ -137,10 +137,10 @@ class MelCloudClimate(ClimateEntity):
         return self._base_device.temperature_increment
 
 
-class AtaDeviceClimate(MelCloudClimate):
+class AtaDeviceClimate(MelViewClimate):
     """Air-to-Air climate device."""
 
-    def __init__(self, device: MelCloudDevice, ata_device: AtaDevice):
+    def __init__(self, device: MelViewDevice, ata_device: AtaDevice):
         """Initialize the climate."""
         super().__init__(device)
         self._device = ata_device
@@ -253,7 +253,7 @@ class AtaDeviceClimate(MelCloudClimate):
             mode = self._device.vane_vertical
             if mode is not None:
                 swing = ATA_HVAC_VVANE_LOOKUP.get(mode)
-            
+
         if swing is None:
             return "Auto"
 
@@ -313,7 +313,7 @@ class AtaDeviceClimate(MelCloudClimate):
 
         # if self._support_hor_swing == True:
         #     supp_feature |= SUPPORT_PRESET_MODE
-        
+
         return supp_feature
 
     @property
@@ -335,10 +335,10 @@ class AtaDeviceClimate(MelCloudClimate):
         return DEFAULT_MAX_TEMP
 
 
-class AtwDeviceZoneClimate(MelCloudClimate):
+class AtwDeviceZoneClimate(MelViewClimate):
     """Air-to-Water zone climate device."""
 
-    def __init__(self, device: MelCloudDevice, atw_device: AtwDevice, atw_zone: Zone):
+    def __init__(self, device: MelViewDevice, atw_device: AtwDevice, atw_zone: Zone):
         """Initialize the climate."""
         super().__init__(device)
         self._device = atw_device
@@ -425,7 +425,7 @@ class AtwDeviceZoneClimate(MelCloudClimate):
     def min_temp(self) -> float:
         """Return the minimum temperature.
 
-        MELCloud API does not expose radiator zone temperature limits.
+        MELView API does not expose radiator zone temperature limits.
         """
         return 10
 
@@ -433,6 +433,6 @@ class AtwDeviceZoneClimate(MelCloudClimate):
     def max_temp(self) -> float:
         """Return the maximum temperature.
 
-        MELCloud API does not expose radiator zone temperature limits.
+        MELView API does not expose radiator zone temperature limits.
         """
         return 30

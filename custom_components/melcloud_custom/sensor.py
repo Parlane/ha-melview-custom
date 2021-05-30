@@ -1,8 +1,8 @@
-"""Support for MelCloud device sensors."""
+"""Support for MelView device sensors."""
 import logging
 
-from pymelcloud import DEVICE_TYPE_ATA, DEVICE_TYPE_ATW
-from pymelcloud.atw_device import Zone
+from pymelview import DEVICE_TYPE_ATA, DEVICE_TYPE_ATW
+from pymelview.atw_device import Zone
 
 from homeassistant.const import (
     DEVICE_CLASS_TEMPERATURE,
@@ -14,7 +14,7 @@ from homeassistant.const import (
 from homeassistant.components.binary_sensor import DEVICE_CLASS_PROBLEM
 from homeassistant.helpers.entity import Entity
 
-from . import MelCloudDevice
+from . import MelViewDevice
 from .const import DOMAIN, MEL_DEVICES
 
 ATTR_MEASUREMENT_NAME = "measurement_name"
@@ -33,11 +33,11 @@ ATTR_STATE_UMODEL = "model"
 ATTR_STATE_USERIAL = "serial_number"
 
 ATTR_STATE_DEVICE_UNIT = [
-    { 
+    {
       ATTR_STATE_UMODEL: "unit",
       ATTR_STATE_USERIAL: "unit_serial",
     },
-    { 
+    {
       ATTR_STATE_UMODEL: "ext_unit",
       ATTR_STATE_USERIAL: "ext_unit_serial",
     },
@@ -131,7 +131,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_sensors(hass, entry, async_add_entities, type_binary, init_status=False):
-    """Set up MELCloud device sensors and bynary sensor based on config_entry."""
+    """Set up MELView device sensors and bynary sensor based on config_entry."""
     entry_config = hass.data[DOMAIN][entry.entry_id]
     ata_sensors = ATA_BINARY_SENSORS if type_binary else ATA_SENSORS
     atw_sensors = {} if type_binary else ATW_SENSORS
@@ -162,14 +162,14 @@ async def async_setup_sensors(hass, entry, async_add_entities, type_binary, init
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Set up MELCloud device sensors based on config_entry."""
+    """Set up MELView device sensors based on config_entry."""
     await async_setup_sensors(hass, entry, async_add_entities, False)
 
 
 class MelDeviceSensor(Entity):
     """Representation of a Sensor."""
 
-    def __init__(self, device: MelCloudDevice, measurement, definition, isbinary):
+    def __init__(self, device: MelViewDevice, measurement, definition, isbinary):
         """Initialize the sensor."""
         self._api = device
         self._name_slug = device.name
@@ -197,7 +197,7 @@ class MelDeviceSensor(Entity):
         """Return the state of the binary sensor."""
         if self._isbinary:
             return self._def[ATTR_VALUE_FN](self._api)
-            
+
         return False
 
     @property
@@ -251,7 +251,7 @@ class AtwZoneSensor(MelDeviceSensor):
     """Air-to-Air device sensor."""
 
     def __init__(
-        self, api: MelCloudDevice, zone: Zone, measurement, definition,
+        self, api: MelViewDevice, zone: Zone, measurement, definition,
     ):
         """Initialize the sensor."""
         super().__init__(api, measurement, definition, False)

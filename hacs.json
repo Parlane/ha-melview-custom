@@ -1,5 +1,5 @@
 {
-  "name": "MELCloud Custom",
+  "name": "MELView Custom",
   "domains": ["climate"],
   "iot_class": "Cloud Polling"
 }

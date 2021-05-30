@@ -1,4 +1,4 @@
-"""The MELCloud Climate integration."""
+"""The MELView Climate integration."""
 import asyncio
 from datetime import timedelta
 import logging
@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional
 
 from aiohttp import ClientConnectionError, ClientSession
 from async_timeout import timeout
-from pymelcloud import Device, get_devices
-from pymelcloud.client import BASE_URL
+from pymelview import Device, get_devices
+from pymelview.client import BASE_URL
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
@@ -32,7 +32,7 @@ MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=60)
 
 PLATFORMS = ["climate", "sensor", "binary_sensor"]
 
-MELCLOUD_SCHEMA = vol.Schema({
+MELVIEW_SCHEMA = vol.Schema({
     vol.Required(CONF_USERNAME): str,
     vol.Required(CONF_PASSWORD): str,
     vol.Required(CONF_LANGUAGE): vol.In(LANGUAGES.keys()),
@@ -42,15 +42,12 @@ MELCLOUD_SCHEMA = vol.Schema({
 
 CONFIG_SCHEMA = vol.Schema(
     {
-        DOMAIN: MELCLOUD_SCHEMA
+        DOMAIN: MELVIEW_SCHEMA
     },
     extra=vol.ALLOW_EXTRA,
 )
 
-#BASE_URL = "https://app.melcloud.com/Mitsubishi.Wifi.Client"
-
-
-class MelCloudAuthentication:
+class MelViewAuthentication:
     def __init__(self, email, password, language = Language.English):
         self._email = email
         self._password = password
@@ -59,7 +56,7 @@ class MelCloudAuthentication:
 
     def isLogin(self):
         return self._contextkey != None
-        
+
     async def login(self, _session: ClientSession):
         _LOGGER.debug("Login ...")
 
@@ -67,7 +64,7 @@ class MelCloudAuthentication:
 
         if _session is None:
             return False
-            
+
         body = {
             "Email": self._email,
             "Password": self._password,
@@ -81,29 +78,29 @@ class MelCloudAuthentication:
             f"{BASE_URL}/Login/ClientLogin", json=body, raise_for_status=True
         ) as resp:
             req = await resp.json()
-    
+
         if not req is None:
             if "ErrorId" in req and req["ErrorId"] == None:
                 self._contextkey = req.get("LoginData").get("ContextKey")
                 return True
             else:
-                _LOGGER.error("MELCloud User/Password invalid!")
+                _LOGGER.error("MELView User/Password invalid!")
         else:
-            _LOGGER.error("Login to MELCloud failed!")
-            
+            _LOGGER.error("Login to MELView failed!")
+
         return False
-        
+
     def getContextKey(self):
         return self._contextkey
 
 
 async def async_setup(hass: HomeAssistantType, config: ConfigEntry):
-    """Establish connection with MELCloud."""
+    """Establish connection with MELView."""
     if DOMAIN not in config:
         return True
 
     conf = config.get(DOMAIN)
-    
+
     hass.async_create_task(
         hass.config_entries.flow.async_init(
             DOMAIN,
@@ -128,8 +125,8 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
         language,
         str(mclanguage)
     )
-    
-    mcauth = MelCloudAuthentication(username, conf[CONF_PASSWORD], mclanguage)
+
+    mcauth = MelViewAuthentication(username, conf[CONF_PASSWORD], mclanguage)
     try:
         result = await mcauth.login(hass.helpers.aiohttp_client.async_get_clientsession())
         if not result:
@@ -169,8 +166,8 @@ async def async_unload_entry(hass, config_entry):
     return True
 
 
-class MelCloudDevice:
-    """MELCloud Device instance."""
+class MelViewDevice:
+    """MELView Device instance."""
 
     def __init__(self, device: Device):
         """Construct a device wrapper."""
@@ -180,7 +177,7 @@ class MelCloudDevice:
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self, **kwargs):
-        """Pull the latest data from MELCloud."""
+        """Pull the latest data from MELView."""
         try:
             await self.device.update()
             self._available = True
@@ -189,7 +186,7 @@ class MelCloudDevice:
             self._available = False
 
     async def async_set(self, properties: Dict[str, Any]):
-        """Write state changes to the MELCloud API."""
+        """Write state changes to the MELView API."""
         try:
             await self.device.set(properties)
             self._available = True
@@ -249,19 +246,19 @@ class MelCloudDevice:
             "name": self.name,
             "connections": {(CONNECTION_NETWORK_MAC, self.device.mac)},
         }
-        model = "MELCloud IF (MAC: %s)" % (self.device.mac)
+        model = "MELView IF (MAC: %s)" % (self.device.mac)
         unit_infos = self.device.units
         if unit_infos is not None:
             model = model + " - " + ", ".join(
                 [x["model"] for x in unit_infos if x["model"]]
             )
         _device_info["model"] = model
-        
+
         return _device_info
 
 
-async def mel_devices_setup(hass, token) -> List[MelCloudDevice]:
-    """Query connected devices from MELCloud."""
+async def mel_devices_setup(hass, token) -> List[MelViewDevice]:
+    """Query connected devices from MELView."""
     session = hass.helpers.aiohttp_client.async_get_clientsession()
     try:
         with timeout(10):
@@ -276,5 +273,5 @@ async def mel_devices_setup(hass, token) -> List[MelCloudDevice]:
 
     wrapped_devices = {}
     for device_type, devices in all_devices.items():
-        wrapped_devices[device_type] = [MelCloudDevice(device) for device in devices]
+        wrapped_devices[device_type] = [MelViewDevice(device) for device in devices]
     return wrapped_devices

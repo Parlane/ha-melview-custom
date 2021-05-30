@@ -1,13 +1,13 @@
 {
   "config": {
-    "title": "MELCloud Custom",
+    "title": "MELView Custom",
     "step": {
       "user": {
-        "title": "Connect to MELCloud",
-        "description": "Connect using your MELCloud account.",
+        "title": "Connect to MELView",
+        "description": "Connect using your MELView account.",
         "data": {
-          "username": "Email used to login to MELCloud.",
-          "password": "MELCloud password.",
+          "username": "Email used to login to MELView.",
+          "password": "MELView password.",
           "language": "Language",
           "wifi_signal": "WiFi signal Sensor",
           "room_temperature": "Room temperature Sensor",
@@ -22,7 +22,7 @@
       "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "MELCloud integration already configured for this email. Access password has been refreshed."
+      "already_configured": "MELView integration already configured for this email. Access password has been refreshed."
     }
   }
 }

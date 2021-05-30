@@ -112,7 +112,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigEntry):
 
 
 async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
-    """Establish connection with MELClooud."""
+    """Establish connection with MELView."""
     conf = entry.data
     username = conf[CONF_USERNAME]
     language = conf[CONF_LANGUAGE]

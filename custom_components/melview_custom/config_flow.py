@@ -10,7 +10,7 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 
 from .const import DOMAIN, CONF_LANGUAGE, LANGUAGES  # pylint: disable=unused-import
-from . import MELCLOUD_SCHEMA, MelViewAuthentication
+from . import MELVIEW_SCHEMA, MelViewAuthentication
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,6 +81,6 @@ class FlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=MELCLOUD_SCHEMA,
+            data_schema=MELVIEW_SCHEMA,
             errors=errors if errors else {},
         )

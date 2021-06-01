@@ -40,7 +40,7 @@ class FlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         password = user_input[CONF_PASSWORD]
         language = user_input[CONF_LANGUAGE]
 
-        if password is None:  # and token is None:
+        if password is None:
             raise ValueError(
                 "Invalid internal state. Called without password",
             )

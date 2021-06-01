@@ -8,13 +8,13 @@ from aiohttp import ClientConnectionError, ClientSession
 from async_timeout import timeout
 from pymelview import Device, get_devices
 from pymelview.client import BASE_URL
+import pymelview.client
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.typing import HomeAssistantType
-from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC
 from homeassistant.util import Throttle
 
 from .const import (
@@ -52,46 +52,28 @@ class MelViewAuthentication:
         self._email = email
         self._password = password
         self._language = language
-        self._contextkey = None
+        self._client = None
 
     def isLogin(self):
-        return self._contextkey != None
+        return self._client != None
 
     async def login(self, _session: ClientSession):
         _LOGGER.debug("Login ...")
 
-        self._contextkey = None
+        self._client = None
 
         if _session is None:
             return False
 
-        body = {
-            "Email": self._email,
-            "Password": self._password,
-            "Language": self._language,
-            "AppVersion": "1.19.1.1",
-            "Persist": False,
-            "CaptchaResponse": None,
-        }
-
-        async with _session.post(
-            f"{BASE_URL}/Login/ClientLogin", json=body, raise_for_status=True
-        ) as resp:
-            req = await resp.json()
-
-        if not req is None:
-            if "ErrorId" in req and req["ErrorId"] == None:
-                self._contextkey = req.get("LoginData").get("ContextKey")
-                return True
-            else:
-                _LOGGER.error("MELView User/Password invalid!")
-        else:
+        try:
+            self._client = await pymelview.login(self._email, self._password, session=_session)
+            return True
+        except:
             _LOGGER.error("Login to MELView failed!")
-
-        return False
+            return False
 
     def getContextKey(self):
-        return self._contextkey
+        return self._client
 
 
 async def async_setup(hass: HomeAssistantType, config: ConfigEntry):
@@ -134,8 +116,8 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
     except:
         raise ConfigEntryNotReady()
 
-    token = mcauth.getContextKey()
-    mel_devices = await mel_devices_setup(hass, token)
+    client = mcauth.getContextKey()
+    mel_devices = await mel_devices_setup(hass, client)
     hass.data.setdefault(DOMAIN, {}).setdefault(entry.entry_id, {}).update(
         {
             MEL_DEVICES: mel_devices,
@@ -215,18 +197,11 @@ class MelViewDevice:
         return self.device._device_conf
 
     @property
-    def wifi_signal(self) -> Optional[int]:
-        """Return wifi signal."""
-        if self.device._device_conf is None:
-            return None
-        return self.device._device_conf.get("Device", {}).get("WifiSignalStrength", None)
-
-    @property
     def error_state(self) -> Optional[bool]:
         """Return error_state."""
         if self.device._device_conf is None:
             return None
-        device = self.device._device_conf.get("Device", {})
+        device = self.device._device_conf
         return device.get("HasError", False)
 
     @property
@@ -234,36 +209,28 @@ class MelViewDevice:
         """Return has wide van info."""
         if self.device._device_conf is None:
             return False
-        device = self.device._device_conf.get("Device", {})
+        device = self.device._device_conf
         return device.get("HasWideVane", False)
 
     @property
     def device_info(self):
         """Return a device description for device registry."""
         _device_info = {
-            "identifiers": {(DOMAIN, f"{self.device.mac}-{self.device.serial}")},
+            "identifiers": {(DOMAIN, f"heatpump_{self.device.device_id}")},
             "manufacturer": "Mitsubishi Electric",
             "name": self.name,
-            "connections": {(CONNECTION_NETWORK_MAC, self.device.mac)},
+            "model": "MELView IF (ID: %s)" % (self.device.device_id)
         }
-        model = "MELView IF (MAC: %s)" % (self.device.mac)
-        unit_infos = self.device.units
-        if unit_infos is not None:
-            model = model + " - " + ", ".join(
-                [x["model"] for x in unit_infos if x["model"]]
-            )
-        _device_info["model"] = model
-
         return _device_info
 
 
-async def mel_devices_setup(hass, token) -> List[MelViewDevice]:
+async def mel_devices_setup(hass, client) -> List[MelViewDevice]:
     """Query connected devices from MELView."""
     session = hass.helpers.aiohttp_client.async_get_clientsession()
     try:
         with timeout(10):
             all_devices = await get_devices(
-                token,
+                client,
                 session,
                 conf_update_interval=timedelta(minutes=5),
                 device_set_debounce=timedelta(seconds=1),

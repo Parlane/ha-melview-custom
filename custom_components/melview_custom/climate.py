@@ -3,14 +3,8 @@ from datetime import timedelta
 import logging
 from typing import Any, Dict, List, Optional
 
-from pymelview import DEVICE_TYPE_ATA, DEVICE_TYPE_ATW, AtaDevice, AtwDevice
+from pymelview import DEVICE_TYPE_ATA, AtaDevice
 import pymelview.ata_device as ata
-import pymelview.atw_device as atw
-from pymelview.atw_device import (
-    PROPERTY_ZONE_1_OPERATION_MODE,
-    PROPERTY_ZONE_2_OPERATION_MODE,
-    Zone,
-)
 from pymelview.device import PROPERTY_POWER
 
 from homeassistant.components.climate.const import (
@@ -86,28 +80,19 @@ ATA_HVAC_HVANE_LOOKUP = {
 }
 ATA_HVAC_HVANE_REVERSE_LOOKUP = {v: k for k, v in ATA_HVAC_HVANE_LOOKUP.items()}
 
-
-ATW_ZONE_HVAC_MODE_LOOKUP = {
-    atw.ZONE_OPERATION_MODE_HEAT: HVAC_MODE_HEAT,
-    atw.ZONE_OPERATION_MODE_COOL: HVAC_MODE_COOL,
-}
-ATW_ZONE_HVAC_MODE_REVERSE_LOOKUP = {v: k for k, v in ATW_ZONE_HVAC_MODE_LOOKUP.items()}
-
-
 async def async_setup_entry(
     hass: HomeAssistantType, entry: ConfigEntry, async_add_entities
 ):
     """Set up MelView device climate based on config_entry."""
     mel_devices = hass.data[DOMAIN][entry.entry_id].get(MEL_DEVICES)
+    _LOGGER.warning("Devices=")
+    _LOGGER.warning(mel_devices)
+    _LOGGER.warning(mel_devices[DEVICE_TYPE_ATA])
+
     async_add_entities(
         [
             AtaDeviceClimate(mel_device, mel_device.device)
             for mel_device in mel_devices[DEVICE_TYPE_ATA]
-        ]
-        + [
-            AtwDeviceZoneClimate(mel_device, mel_device.device, zone)
-            for mel_device in mel_devices[DEVICE_TYPE_ATW]
-            for zone in mel_device.device.zones
         ],
         True,
     )
@@ -151,7 +136,7 @@ class AtaDeviceClimate(MelViewClimate):
     @property
     def unique_id(self) -> Optional[str]:
         """Return a unique ID."""
-        return f"{self._device.serial}-{self._device.mac}"
+        return f"heatpump_{self._device.device_id}"
 
     @property
     def name(self):
@@ -333,106 +318,3 @@ class AtaDeviceClimate(MelViewClimate):
             return max_value
 
         return DEFAULT_MAX_TEMP
-
-
-class AtwDeviceZoneClimate(MelViewClimate):
-    """Air-to-Water zone climate device."""
-
-    def __init__(self, device: MelViewDevice, atw_device: AtwDevice, atw_zone: Zone):
-        """Initialize the climate."""
-        super().__init__(device)
-        self._device = atw_device
-        self._zone = atw_zone
-
-    @property
-    def unique_id(self) -> Optional[str]:
-        """Return a unique ID."""
-        return f"{self.api.device.serial}-{self._zone.zone_index}"
-
-    @property
-    def name(self) -> str:
-        """Return the display name of this entity."""
-        return f"{self._name} {self._zone.name}"
-
-    @property
-    def device_state_attributes(self) -> Dict[str, Any]:
-        """Return the optional state attributes with device specific additions."""
-        data = {
-            ATTR_STATUS: ATW_ZONE_HVAC_MODE_LOOKUP.get(
-                self._zone.status, self._zone.status
-            )
-        }
-        return data
-
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement used by the platform."""
-        return TEMP_CELSIUS
-
-    @property
-    def hvac_mode(self) -> str:
-        """Return hvac operation ie. heat, cool mode."""
-        mode = self._zone.operation_mode
-        if not self._device.power or mode is None:
-            return HVAC_MODE_OFF
-        return ATW_ZONE_HVAC_MODE_LOOKUP.get(mode, HVAC_MODE_OFF)
-
-    async def async_set_hvac_mode(self, hvac_mode: str) -> None:
-        """Set new target hvac mode."""
-        if hvac_mode == HVAC_MODE_OFF:
-            await self._device.set({"power": False})
-            return
-
-        operation_mode = ATW_ZONE_HVAC_MODE_REVERSE_LOOKUP.get(hvac_mode)
-        if operation_mode is None:
-            raise ValueError(f"Invalid hvac_mode [{hvac_mode}]")
-
-        if self._zone.zone_index == 1:
-            props = {PROPERTY_ZONE_1_OPERATION_MODE: operation_mode}
-        else:
-            props = {PROPERTY_ZONE_2_OPERATION_MODE: operation_mode}
-        if self.hvac_mode == HVAC_MODE_OFF:
-            props["power"] = True
-        await self._device.set(props)
-
-    @property
-    def hvac_modes(self) -> List[str]:
-        """Return the list of available hvac operation modes."""
-        return [self.hvac_mode]
-
-    @property
-    def current_temperature(self) -> Optional[float]:
-        """Return the current temperature."""
-        return self._zone.room_temperature
-
-    @property
-    def target_temperature(self) -> Optional[float]:
-        """Return the temperature we try to reach."""
-        return self._zone.target_temperature
-
-    async def async_set_temperature(self, **kwargs) -> None:
-        """Set new target temperature."""
-        await self._zone.set_target_temperature(
-            kwargs.get("temperature", self.target_temperature)
-        )
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return SUPPORT_TARGET_TEMPERATURE
-
-    @property
-    def min_temp(self) -> float:
-        """Return the minimum temperature.
-
-        MELView API does not expose radiator zone temperature limits.
-        """
-        return 10
-
-    @property
-    def max_temp(self) -> float:
-        """Return the maximum temperature.
-
-        MELView API does not expose radiator zone temperature limits.
-        """
-        return 30

@@ -85,9 +85,6 @@ async def async_setup_entry(
 ):
     """Set up MelView device climate based on config_entry."""
     mel_devices = hass.data[DOMAIN][entry.entry_id].get(MEL_DEVICES)
-    _LOGGER.warning("Devices=")
-    _LOGGER.warning(mel_devices)
-    _LOGGER.warning(mel_devices[DEVICE_TYPE_ATA])
 
     async_add_entities(
         [

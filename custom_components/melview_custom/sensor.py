@@ -4,12 +4,14 @@ import logging
 from pymelview import DEVICE_TYPE_ATA
 
 from homeassistant.const import (
-    DEVICE_CLASS_TEMPERATURE,
-    TEMP_CELSIUS,
+    UnitOfTemperature,
     STATE_ON,
     STATE_OFF
 )
-from homeassistant.components.binary_sensor import DEVICE_CLASS_PROBLEM
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+)
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.helpers.entity import Entity
 
 from . import MelViewDevice
@@ -29,8 +31,8 @@ ATA_SENSORS = {
     "room_temperature": {
         ATTR_MEASUREMENT_NAME: "Room Temperature",
         ATTR_ICON: "mdi:thermometer",
-        ATTR_UNIT: TEMP_CELSIUS,
-        ATTR_DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        ATTR_UNIT: UnitOfTemperature.CELSIUS,
+        ATTR_DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         ATTR_VALUE_FN: lambda x: x.device.room_temperature,
         ATTR_ENABLED_FN: lambda x: True,
     },
@@ -41,7 +43,7 @@ ATA_BINARY_SENSORS = {
         ATTR_MEASUREMENT_NAME: "Error State",
         ATTR_ICON: None,
         ATTR_UNIT: None,
-        ATTR_DEVICE_CLASS: DEVICE_CLASS_PROBLEM,
+        ATTR_DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
         ATTR_VALUE_FN: lambda x: x.error_state,
         ATTR_ENABLED_FN: lambda x: True,
     },

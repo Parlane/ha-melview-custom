@@ -7,14 +7,15 @@ from typing import Any, Dict, List, Optional
 from aiohttp import ClientConnectionError, ClientSession
 from async_timeout import timeout
 from pymelview import Device, get_devices
-from pymelview.client import BASE_URL
 import pymelview.client
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import Throttle
 
 from .const import (
@@ -48,22 +49,19 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 class MelViewAuthentication:
-    def __init__(self, email, password, language = Language.English):
-        self._email = email
-        self._password = password
-        self._language = language
+    def __init__(self, email: str, password: str, language: int = Language.English):
+        self._email: str = email
+        self._password: str = password
+        self._language: int = language
         self._client = None
 
     def isLogin(self):
         return self._client != None
 
-    async def login(self, _session: ClientSession):
+    async def login(self, _session: ClientSession) -> bool:
         _LOGGER.debug("Login ...")
 
         self._client = None
-
-        if _session is None:
-            return False
 
         try:
             self._client = await pymelview.login(self._email, self._password, session=_session)
@@ -76,7 +74,7 @@ class MelViewAuthentication:
         return self._client
 
 
-async def async_setup(hass: HomeAssistantType, config: ConfigEntry):
+async def async_setup(hass: HomeAssistant, config: ConfigType):
     """Establish connection with MELView."""
     if DOMAIN not in config:
         return True
@@ -93,7 +91,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigEntry):
     return True
 
 
-async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Establish connection with MELView."""
     conf = entry.data
     username = conf[CONF_USERNAME]
@@ -110,7 +108,7 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
 
     mcauth = MelViewAuthentication(username, conf[CONF_PASSWORD], mclanguage)
     try:
-        result = await mcauth.login(hass.helpers.aiohttp_client.async_get_clientsession())
+        result: bool = await mcauth.login(async_get_clientsession(hass))
         if not result:
             raise ConfigEntryNotReady()
     except:
@@ -125,16 +123,18 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
     )
     disable_sensors = conf.get(CONF_DISABLE_SENSORS, False)
 
+    platforms: list[str] = []
     for platform in PLATFORMS:
         if platform == "climate" or not disable_sensors:
-            hass.async_create_task(
-                hass.config_entries.async_forward_entry_setup(entry, platform)
-            )
+            platforms.append(platform)
+
+
+    await hass.config_entries.async_forward_entry_setups(entry, platforms)
 
     return True
 
 
-async def async_unload_entry(hass, config_entry):
+async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Unload a config entry."""
     await asyncio.gather(
         *[
@@ -151,14 +151,14 @@ async def async_unload_entry(hass, config_entry):
 class MelViewDevice:
     """MELView Device instance."""
 
-    def __init__(self, device: Device):
+    def __init__(self, device: Device) -> None:
         """Construct a device wrapper."""
-        self.device = device
-        self.name = device.name
+        self.device: Device = device
+        self.name: str = device.name
         self._available = True
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    async def async_update(self, **kwargs):
+    async def async_update(self) -> None:
         """Pull the latest data from MELView."""
         try:
             await self.device.update()
@@ -167,7 +167,7 @@ class MelViewDevice:
             _LOGGER.warning("Connection failed for %s", self.name)
             self._available = False
 
-    async def async_set(self, properties: Dict[str, Any]):
+    async def async_set(self, properties: Dict[str, Any]) -> None:
         """Write state changes to the MELView API."""
         try:
             await self.device.set(properties)
@@ -224,9 +224,9 @@ class MelViewDevice:
         return _device_info
 
 
-async def mel_devices_setup(hass, client) -> List[MelViewDevice]:
+async def mel_devices_setup(hass: HomeAssistant, client) -> List[MelViewDevice]:
     """Query connected devices from MELView."""
-    session = hass.helpers.aiohttp_client.async_get_clientsession()
+    session: ClientSession = async_get_clientsession(hass)
     try:
         with timeout(10):
             all_devices = await get_devices(

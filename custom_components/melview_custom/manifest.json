@@ -4,7 +4,7 @@
   "config_flow": true,
   "documentation": "https://github.com/parlane/ha-melview-custom",
   "issue_tracker": "https://github.com/parlane/ha-melview-custom/issues",
-  "requirements": ["git+https://github.com/parlane/pymelview.git@master#pymelview==2.5.2"],
+  "requirements": ["pymelview@git+https://github.com/parlane/pymelview.git@master#egg=pymelview"],
   "codeowners": ["@parlane"],
   "version": "0.2.0"
 }
